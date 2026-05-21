@@ -8,4 +8,6 @@ import (
 func main() {
 	cfg := config.MustLoad()
 	log := logger.SetupLogger(cfg.Env)
+
+	log.Info("starting service")
 }

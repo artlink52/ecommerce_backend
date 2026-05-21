@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -19,6 +20,8 @@ type GRPCConfig struct {
 }
 
 func MustLoad() *Config {
+	_ = godotenv.Load()
+
 	path := os.Getenv("CONFIG_PATH")
 	if path == "" {
 		panic("CONFIG_PATH environment variable not set")
