@@ -2,18 +2,18 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"net/mail"
 	"unicode/utf8"
 
 	pb "github.com/artlink52/ecommerce_backend/proto/gen/auth"
+	domainerrors "github.com/artlink52/ecommerce_backend/services/user-service/internal/domain/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const (
-	minPasswordLength = 4
-)
+const minPasswordLength = 8
 
 type AuthService interface {
 	Register(ctx context.Context, email, password string) (int64, error)
@@ -33,57 +33,47 @@ func (h *AuthHandler) Register(
 	ctx context.Context,
 	req *pb.RegisterRequest,
 ) (*pb.RegisterResponse, error) {
-	if err := validateRegister(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err := validateCredentials(req.GetEmail(), req.GetPassword()); err != nil {
+		return nil, err
 	}
 
 	userID, err := h.authService.Register(ctx, req.Email, req.Password)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		if errors.Is(err, domainerrors.ErrUserExists) {
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
+		return nil, status.Error(codes.Internal, "failed to register user")
 	}
-	return &pb.RegisterResponse{
-		UserId: userID,
-	}, nil
+	return &pb.RegisterResponse{UserId: userID}, nil
 }
 
-func (h *AuthHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {}
-
-func validateLogin(req *pb.LoginRequest) error {
-	if req.GetEmail() == "" {
-		return status.Error(codes.InvalidArgument, "email is required")
+func (h *AuthHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	if err := validateCredentials(req.GetEmail(), req.GetPassword()); err != nil {
+		return nil, err
 	}
 
-	if req.GetPassword() == "" {
-		return status.Error(codes.InvalidArgument, "password is required")
+	token, err := h.authService.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, domainerrors.ErrInvalidCredentials) {
+			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		}
+		return nil, status.Error(codes.Internal, "failed to login")
 	}
-
-	if _, err := mail.ParseAddress(req.GetEmail()); err != nil {
-		return status.Error(codes.InvalidArgument, "invalid email")
-	}
-
-	if utf8.RuneCountInString(req.GetPassword()) < minPasswordLength {
-		return status.Error(codes.InvalidArgument, "password must be at least 8 characters")
-	}
-
-	return nil
+	return &pb.LoginResponse{Token: token}, nil
 }
 
-func validateRegister(req *pb.RegisterRequest) error {
-	if req.GetEmail() == "" {
+func validateCredentials(email, password string) error {
+	if email == "" {
 		return status.Error(codes.InvalidArgument, "email is required")
 	}
-
-	if req.GetPassword() == "" {
-		return status.Error(codes.InvalidArgument, "password is required")
-	}
-
-	if _, err := mail.ParseAddress(req.GetEmail()); err != nil {
+	if _, err := mail.ParseAddress(email); err != nil {
 		return status.Error(codes.InvalidArgument, "invalid email")
 	}
-
-	if utf8.RuneCountInString(req.GetPassword()) < minPasswordLength {
-		return status.Error(codes.InvalidArgument, "password must be at least 8 characters")
+	if password == "" {
+		return status.Error(codes.InvalidArgument, "password is required")
 	}
-
+	if utf8.RuneCountInString(password) < minPasswordLength {
+		return status.Errorf(codes.InvalidArgument, "password must be at least %d characters", minPasswordLength)
+	}
 	return nil
 }
