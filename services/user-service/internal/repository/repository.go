@@ -15,10 +15,10 @@ import (
 const pgUniqueViolation = "23505"
 
 type UserRepository struct {
-	pool pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
-func NewUserRepository(pool pgxpool.Pool) *UserRepository {
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
