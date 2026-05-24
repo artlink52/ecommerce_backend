@@ -1,0 +1,9 @@
+env: "local"
+http:
+  port: 8080
+  timeout: 5s
+user_service:
+  addr: "localhost:50051"
+  timeout: 5s
+infra:
+  jwt_secret: "qwerty123"

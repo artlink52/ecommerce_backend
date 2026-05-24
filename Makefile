@@ -1,5 +1,5 @@
 .PHONY: up up-db down build logs ps restart \
-        run-user-service \
+        run-user-service run-api-gateway \
         install-migrate migrate-up migrate-down migrate-force \
         proto \
         tidy
@@ -35,6 +35,9 @@ restart:
 run-user-service:
 	cd services/user-service && go run cmd/main.go --config=config/local.yaml
 
+run-api-gateway:
+	cd services/api-gateway && go run cmd/main.go --config=config/local.yaml
+
 # ── Migrations ───────────────────────────────────────────────────────────────
 
 install-migrate:
@@ -64,3 +67,4 @@ tidy:
 	cd pkg && go mod tidy
 	cd proto && go mod tidy
 	cd services/user-service && go mod tidy
+	cd services/api-gateway && go mod tidy

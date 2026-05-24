@@ -30,5 +30,18 @@ services:
       user-service-postgres:
         condition: service_healthy
 
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: api-gateway
+    environment:
+      CONFIG_PATH: /app/config/local.yaml
+      USER_SERVICE_ADDR: user-service:50051
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service
+
 volumes:
   postgres_data:
