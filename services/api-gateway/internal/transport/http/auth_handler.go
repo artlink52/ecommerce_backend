@@ -3,8 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
+	"github.com/artlink52/ecommerce_backend/pkg/logger"
+	"github.com/artlink52/ecommerce_backend/services/api-gateway/internal/transport/response"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,66 +27,71 @@ func NewAuthHandler(userClient UserClient) *AuthHandler {
 
 }
 
+type AuthRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+	responseHandler := response.NewHTTPResponseHandler(log, w)
+
+	var req AuthRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		responseHandler.ErrorResponse(err, "invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	log.Info("register request", slog.String("email", req.Email))
 
 	userID, err := h.userClient.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeGRPCError(w, err)
+		log.Warn("register failed", slog.String("email", req.Email), logger.Err(err))
+		writeGRPCError(responseHandler, err)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]any{"user_id": userID})
+	log.Info("user registered", slog.String("email", req.Email), slog.Int64("user_id", userID))
+	responseHandler.JSONResponse(map[string]any{"user_id": userID}, http.StatusCreated)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+	responseHandler := response.NewHTTPResponseHandler(log, w)
+
+	var req AuthRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		responseHandler.ErrorResponse(err, "invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	log.Info("login request", slog.String("email", req.Email))
 
 	token, err := h.userClient.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeGRPCError(w, err)
+		log.Warn("login failed", slog.String("email", req.Email), logger.Err(err))
+		writeGRPCError(responseHandler, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"token": token})
+	log.Info("login successful", slog.String("email", req.Email))
+	responseHandler.JSONResponse(map[string]any{"token": token}, http.StatusOK)
 }
 
-func writeGRPCError(w http.ResponseWriter, err error) {
+func writeGRPCError(rh *response.HTTPResponseHandler, err error) {
 	st, _ := status.FromError(err)
 	switch st.Code() {
 	case codes.InvalidArgument:
-		writeError(w, http.StatusBadRequest, st.Message())
+		rh.ErrorResponse(err, st.Message(), http.StatusBadRequest)
 	case codes.AlreadyExists:
-		writeError(w, http.StatusConflict, st.Message())
+		rh.ErrorResponse(err, st.Message(), http.StatusConflict)
 	case codes.Unauthenticated:
-		writeError(w, http.StatusUnauthorized, st.Message())
+		rh.ErrorResponse(err, st.Message(), http.StatusUnauthorized)
 	case codes.NotFound:
-		writeError(w, http.StatusNotFound, st.Message())
+		rh.ErrorResponse(err, st.Message(), http.StatusNotFound)
 	default:
-		writeError(w, http.StatusInternalServerError, "internal server error")
+		rh.ErrorResponse(errors.New("internal server error"), "internal server error", http.StatusInternalServerError)
 	}
-}
-
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]any{"error": msg})
 }

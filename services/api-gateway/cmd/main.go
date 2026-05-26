@@ -15,6 +15,7 @@ import (
 	"github.com/artlink52/ecommerce_backend/services/api-gateway/internal/clients/user"
 	"github.com/artlink52/ecommerce_backend/services/api-gateway/internal/config"
 	httphandler "github.com/artlink52/ecommerce_backend/services/api-gateway/internal/transport/http"
+	"github.com/artlink52/ecommerce_backend/services/api-gateway/internal/transport/middleware"
 )
 
 func main() {
@@ -33,8 +34,16 @@ func main() {
 	authHandler := httphandler.NewAuthHandler(userClient)
 
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID())
+	r.Use(middleware.Logger(log))
+
 	r.Post("/auth/register", authHandler.Register)
 	r.Post("/auth/login", authHandler.Login)
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware(cfg.Infra.JWTSecret))
+		// защищённые роуты будут здесь
+	})
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTP.Port),
