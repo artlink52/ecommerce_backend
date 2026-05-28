@@ -44,7 +44,7 @@ func ToContext(ctx context.Context, log *slog.Logger) context.Context {
 func FromContext(ctx context.Context) *slog.Logger {
 	log, ok := ctx.Value(key).(*slog.Logger)
 	if !ok {
-		panic("logger not found in context")
+		return nil
 	}
 	return log
 }
