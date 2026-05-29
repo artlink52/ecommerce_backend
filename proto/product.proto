@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package product;
+
+option go_package = "github.com/artlink52/ecommerce_backend/proto/gen/product;product";
+
+service ProductService {
+  rpc CreateProduct (CreateProductRequest) returns (CreateProductResponse);
+  rpc GetProduct (GetProductRequest) returns (GetProductResponse);
+  rpc GetProducts (GetProductsRequest) returns (GetProductsResponse);
+  rpc UpdateStock (UpdateStockRequest) returns (UpdateStockResponse);
+}
+
+// сущность продукта
+
+message Product {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  int64 price = 4;
+  int32 stock = 5;
+}
+
+// создание продукта ————————————————————————————————————————————————————————
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  int64 price = 3;
+  int32 stock = 4;
+}
+
+message CreateProductResponse {
+  int64 product_id = 1;
+}
+
+// получение продукта —————————————————————————————————————
+
+message GetProductRequest {
+  int64 product_id = 1;
+}
+
+message GetProductResponse {
+  Product product = 1;
+}
+
+// получение продуктОВ —————————————————————————————————
+
+message GetProductsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message GetProductsResponse {
+  repeated Product products = 1;
+}
+
+// обновление количества сколько в наличии ————————————————————
+
+message UpdateStockRequest {
+  int64 product_id = 1;
+  int64 delta = 2;
+}
+
+message UpdateStockResponse {}
+

@@ -54,13 +54,19 @@ migrate-force:
 
 # ── Proto ────────────────────────────────────────────────────────────────────
 
-proto:
+proto-auth:
 	protoc \
 		--go_out=proto/gen/auth --go_opt=paths=source_relative \
 		--go-grpc_out=proto/gen/auth --go-grpc_opt=paths=source_relative \
 		--proto_path=proto \
 		proto/auth.proto
 
+proto-product:
+	protoc \
+		--go_out=proto/gen/product --go_opt=paths=source_relative \
+		--go-grpc_out=proto/gen/product --go-grpc_opt=paths=source_relative \
+		--proto_path=proto \
+		proto/product.proto
 # ── Go workspace ─────────────────────────────────────────────────────────────
 
 tidy:
